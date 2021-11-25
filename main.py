@@ -4,6 +4,8 @@ import datetime
 import math
 import random
 
+pygame.init()
+
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 GREEN = (0, 255, 0)
@@ -12,8 +14,49 @@ SCREEN_HEIGHT = 1440
 CZAS_KOLIZJI = datetime.timedelta(seconds=2)
 REKAX = 300
 REKAY = 0
+FONT = pygame.freetype.Font("CollegiateBlackFLF.ttf", 24)
 
 
+class TextScore(pygame.sprite.Sprite):
+    def __init__(self, fontname="CollegiateBlackFLF.ttf", fontsize=200, colorkey=WHITE, transparency=255, text='15'):
+        super().__init__()
+
+        self.GAME_FONT = pygame.freetype.Font(fontname, fontsize)
+        self.text = text
+        text_surface, rect = self.GAME_FONT.render(text, (0, 0, 0))
+        self.original_image = text_surface.convert_alpha()
+        self.image = self.original_image
+        #self.temp_filename = filename
+        self.temp_colorkey = colorkey
+        self.temp_transparency = transparency
+        self.rotated_image = None
+        self.rotated_image_rect = None
+        self.angle_temp = 0
+
+        # Set background color to be transparent. Adjust to WHITE if your
+        # background is WHITE.
+        self.image.set_colorkey(colorkey)
+        self.image.set_alpha(transparency)
+        self.rect = self.image.get_rect()
+        self.angle = 0
+
+    def update(self, pos=(120, 120)):
+        self.rect.x = pos[0]
+        self.rect.y = pos[1]
+    def updateText(self, text):
+        self.text = text
+        text_surface, rect = self.GAME_FONT.render(self.text, (0, 0, 0))
+        self.original_image = text_surface.convert_alpha()
+        self.image = self.original_image
+        self.rotated_image = None
+        self.rotated_image_rect = None
+        self.angle_temp = 0
+
+        # Set background color to be transparent. Adjust to WHITE if your
+        # background is WHITE.
+        self.image.set_colorkey(self.temp_colorkey)
+        self.image.set_alpha(self.temp_transparency)
+        self.rect = self.image.get_rect()
 
 
 class Menu(pygame.sprite.Sprite):
@@ -147,6 +190,11 @@ fps = 60
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption('tło_gry')
 
+#define font
+font = pygame.font.SysFont('Bauhaus 93', 60)
+
+
+
 # wartości
 tlo_scroll = 0
 scroll_speed = 2
@@ -161,6 +209,9 @@ tytul = pygame.image.load('tytul.png').convert_alpha()
 
 #mis = pygame.image.load('mis111.png').convert_alpha()
 mis = Player('mis111.png')
+wynik = TextScore(fontname="CollegiateBlackFLF.ttf")
+wynik.rect.x = 200
+wynik.rect.y = 200
 
 all_sprite_list = pygame.sprite.Group()
 reka3 = pygame.image.load("reka3.png").convert_alpha()
@@ -182,11 +233,14 @@ quit_text = Menu("quit.png", GREEN)
 quit_text.image.set_alpha(0)
 quit_text.rect.center = (1280, 1200)
 
+
+
 # dodawanie do all sprite list
 
 all_sprite_list.add(mis)
 all_sprite_list.add(obiekt)
 all_sprite_list.add(przeszkoda)
+all_sprite_list.add(wynik)
 # all_sprite_list.add(restart_screen)
 # all_sprite_list.add(quit_text)
 # all_sprite_list.add(restart_text)
@@ -194,9 +248,14 @@ all_sprite_list.add(przeszkoda)
 
 
 
-pygame.init()
 
- # checking pressed keys
+
+
+
+def draw_text(text, font, text_col, x, y):
+    img = font.render(text, True, text_col)
+    screen.blit(img, (x, y))
+
 
 def mainMenu():
     menu_tlo_scroll = tlo_scroll
@@ -245,8 +304,12 @@ def Game(game_ziemia_scroll, game_tlo_scroll):
     running = True
     pauza = SCREEN_WIDTH
     czy_kolizja = False
+    score = 15
+    score_temp = 15
+    font = pygame.font.SysFont('Bauhaus 93', 60)
 
     while running:
+
         keys = pygame.key.get_pressed()
 
         #mis.update((100, 100))
@@ -287,8 +350,8 @@ def Game(game_ziemia_scroll, game_tlo_scroll):
 
         if przeszkoda.rect.x < -SCREEN_WIDTH - pauza:
             pauza = przeszkoda.return_to_start((SCREEN_WIDTH - 100, SCREEN_HEIGHT - 600))
-            # przeszkoda.rect.x = SCREEN_WIDTH-100
-            # przeszkoda.rect.y = SCREEN_HEIGHT-600
+            przeszkoda.rect.x = SCREEN_WIDTH-100
+            przeszkoda.rect.y = SCREEN_HEIGHT-600
 
         # screen.fill(WHITE)
         pos = pygame.mouse.get_pos()
@@ -325,18 +388,24 @@ def Game(game_ziemia_scroll, game_tlo_scroll):
                 obiekt.kolizja_stop()
                 czy_kolizja = False
 
+        przeszkoda.update(pos)
         obiekt.blitRotate()
         screen.blit(obiekt.rotated_image, obiekt.rotated_image_rect)
 
-        # if keys[pygame.K_a]:
-        #     mis.rect.x -= 10
-        # if keys[pygame.K_d]:
-        #     mis.rect.x += 10
-        # if keys[pygame.K_ESCAPE]:
-        #     running = False
+        #drawing score
+        if score % 20 == 0:
+            score_temp += 1
+
+        wynik.updateText(str(score_temp))
+        #draw_text(str(score_temp), font, WHITE, int(SCREEN_WIDTH / 2), 20)
+        #draw_text(str(score / 5), font, (255, 255, 255), screen, 20, 20)
+
+
+        FONT.render_to(screen, (40, 350), "5", (0, 0, 0))
 
         #all_sprite_list.draw(screen)
 
+        score += 1
         clock.tick(fps)
         pygame.display.update()
 
