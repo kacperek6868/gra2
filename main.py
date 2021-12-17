@@ -3,6 +3,7 @@ import pygame
 import datetime
 import math
 import random
+from PIL import Image, ImageFilter
 
 pygame.init()
 
@@ -14,9 +15,16 @@ SCREEN_HEIGHT = 1440
 CZAS_KOLIZJI = datetime.timedelta(seconds=2)
 REKAX = 300
 REKAY = 0
-SRODEK_REKI = (58, 285)
-REKA_IMAGE = "reka3.png"
 FONT = pygame.freetype.Font("CollegiateBlackFLF.ttf", 24)
+VELOCITY = 10
+BULLETSTART = (3000, 3000)
+
+def Max(x, y):
+    if x > y:
+        return x
+    else:
+        return y
+
 
 
 class TextScore(pygame.sprite.Sprite):
@@ -59,6 +67,9 @@ class TextScore(pygame.sprite.Sprite):
         self.image.set_colorkey(self.temp_colorkey)
         self.image.set_alpha(self.temp_transparency)
         self.rect = self.image.get_rect()
+
+
+
 
 
 class Menu(pygame.sprite.Sprite):
@@ -104,6 +115,9 @@ class Hearts(pygame.sprite.Sprite):
         self.image = pygame.transform.rotate(self.original_image, self.angle_temp)
         # print("pozycja snajpera: ", (self.rect.x, self.rect.y))
 
+
+        #(mx - int(img.get_width() / 2), my - int(img.get_height() / 2))
+
     def take_damage(self, filename):
         self.temp_image = self.original_image
         self.original_image = pygame.image.load(filename).convert_alpha()
@@ -114,6 +128,33 @@ class Hearts(pygame.sprite.Sprite):
         self.original_image = self.temp_image
         self.original_image = pygame.image.load(self.temp_filename).convert_alpha()
         self.image = self.original_image
+
+class Bullet(pygame.sprite.Sprite):
+    def __init__(self, filename, pos, v, kx, ky):
+        super().__init__()
+        self.image = pygame.image.load(filename).convert_alpha()
+        self.v = v
+        self.rect = pos
+        self.kx = kx
+        self.ky = ky
+        self.x = self.rect[0]
+        self.y = self.rect[1]
+
+    def update(self, pos):
+        self.rect.x = self.rect.x + 5# self.rect.x + self.v * self.kx
+        self.rect.y = self.rect.y + 5  #+ self.v * self.ky
+
+    def shoot(self, pos, v, kx, ky):
+        self.v = v
+        self.rect = pos
+        self.kx = kx
+        self.ky = ky
+
+    def przesun(self, pos):
+        # self.rect.x = self.rect.x + pos[0]
+        # self.rect.y = self.rect.y + pos[1]
+        self.rect.x = self.rect.x + pos[0]
+        self.rect.y = self.rect.y + pos[1]
 
 
 class GameObject(pygame.sprite.Sprite):
@@ -136,100 +177,62 @@ class GameObject(pygame.sprite.Sprite):
         #self.image.set_alpha(transparency)
         self.rect = self.image.get_rect()
         self.angle = 0
+        self.dx = 0
+        self.dy = 0
+
+    def shoot(self, pocisk):
+        max = Max(self.dx, self.dy)
+        if max == 0:
+            max = 1
+
+        pocisk.shoot(pos=self.rect, v=VELOCITY, kx=10*self.dx/max, ky=10*self.dy/max)
+        print("strzał")
+
 
     def update(self, pos):
         # print("klik w miejscu: ", pos)
-        # print("rect: ",  self.rect, pos)
-        #self.angle_temp = math.atan2(self.rect.x - pos[0], self.rect.y - pos[1]) / math.pi * 180
-        #self.angle_temp = math.atan2(0 - pos[0], 0 - pos[1]) / math.pi * 180
-        #self.angle_temp = math.atan2(self.rect.x - 0, self.rect.y - 1) / math.pi * 180
+        #self.angle_temp = math.atan2(self.rect.centerx - pos[0], self.rect.centery - pos[1]) / math.pi * 180
+        # self.rect.centerx = 1000
+        print(self.rect.centerx, self.rect.centery)
+        # dx, dy = pos[0] - self.rect.centerx, pos[1] - self.rect.centery
+        self.dx, self.dy = pos[0] - mis.rect.x - 350, pos[1] - mis.rect.y - 260
+        self.angle_temp = math.degrees(math.atan2(-self.dy, self.dx)) - 97
+
+        print("dx = ", self.dx, " dy = ", self.dy)
+
+        # self.angle_temp = 360
+
         # print("kąt: ", angle_temp)
         self.image = pygame.transform.rotate(self.original_image, self.angle_temp)
-        print("rect: ", self.rect.y, pos)
-        #self.blitRotate(image=self.original_image, pos=self.body.rect, originPos=SRODEK_REKI, angle=self.angle_temp)
+
         # print("pozycja snajpera: ", (self.rect.x, self.rect.y))
+        self.rect.x = mis.rect.x + 350 - int(self.image.get_width() / 2)
+        self.rect.y = mis.rect.y + 260 - int(self.image.get_height() / 2)
+
 
     def kolizja_start(self, filename):
         self.temp_image = self.original_image
         self.original_image = pygame.image.load(filename).convert_alpha()
         self.image = self.original_image
-        #self.image.set_colorkey(colorkey)
-        #self.image.set_alpha(transparency)
-        print("kolizja start ", str(datetime.datetime.now()))
-        # self.rect = self.image.get_rect()
+        #print("kolizja start ", str(datetime.datetime.now()))
+
 
     def kolizja_stop(self):
         self.original_image = self.temp_image
         print("kolizja stop ", str(datetime.datetime.now()))
         self.original_image = pygame.image.load(self.temp_filename).convert_alpha()
         self.image = self.original_image
-        #self.image.set_colorkey(self.temp_colorkey)
-        #self.image.set_alpha(self.temp_transparency)
-        # self.image = self.original_image
-        # self.image.set_colorkey(colorkey)
-        # self.image.set_alpha(transparency)
-
-
 
 
 
     def przesun(self, pos):
+        # self.rect.x = self.rect.x + pos[0]
+        # self.rect.y = self.rect.y + pos[1]
         self.rect.x = self.rect.x + pos[0]
         self.rect.y = self.rect.y + pos[1]
         if self.body != None:
             self.body.rect.x = self.body.rect.x + pos[0]
             self.body.rect.y = self.body.rect.y + pos[1]
-
-
-#self, image, pos, originPos, angle
-
-    # def blitRotate(self, originPos, pos):
-    #
-    #     #angle to mouse
-    #     #self.angle_temp = math.atan2(self.rect.x - pos[0], self.rect.y - pos[1]) / math.pi * 180
-    #     angle = math.atan2(obiekt.rect.x - pos[0], obiekt.rect.y - pos[1]) / math.pi * 180
-    #
-    #
-    #     # offset from pivot to center
-    #     image_rect = self.image.get_rect(topleft=(self.rect.x - originPos[0], self.rect.y - originPos[1]))
-    #     offset_center_to_pivot = pygame.math.Vector2((self.rect.x, self.rect.y)) - image_rect.center
-    #
-    #     # roatated offset from pivot to center
-    #     rotated_offset = offset_center_to_pivot.rotate(-angle)
-    #
-    #     # roatetd image center
-    #     rotated_image_center = (self.rect.x - rotated_offset.x, self.rect.y - rotated_offset.y)
-    #
-    #     # get a rotated image
-    #     self.image = pygame.transform.rotate(self.image, angle)
-    #     rotated_image_rect = self.image.get_rect(center=rotated_image_center)
-    #
-    #     # # rotate and blit the image
-    #     # # surf.blit(rotated_image, rotated_image_rect)
-    #     # #
-    #     # # # draw rectangle around the image
-    #     # # pygame.draw.rect(surf, (255, 0, 0), (*rotated_image_rect.topleft, *rotated_image.get_size()), 2)
-
-    def blitRotate(self, image, pos, originPos, angle):
-        # offset from pivot to center
-        image_rect = image.get_rect(topleft=(pos[0] - originPos[0], pos[1] - originPos[1]))
-        offset_center_to_pivot = pygame.math.Vector2(pos) - image_rect.center
-
-        # roatated offset from pivot to center
-        rotated_offset = offset_center_to_pivot.rotate(-angle)
-
-        # roatetd image center
-        rotated_image_center = (pos[0] - rotated_offset.x, pos[1] - rotated_offset.y)
-
-        # get a rotated image
-        rotated_image = pygame.transform.rotate(image, angle)
-        rotated_image_rect = rotated_image.get_rect(center=rotated_image_center)
-
-        # rotate and blit the image
-        # surf.blit(rotated_image, rotated_image_rect)
-
-        # draw rectangle around the image
-
 
 
 class Player(pygame.sprite.Sprite):
@@ -321,6 +324,12 @@ ziemia_speed = 20
 tlo_tyl = pygame.image.load('tło_tło_tło.png').convert()
 tlo_ziemia = pygame.image.load('ziemia_1.png').convert_alpha()
 tytul = pygame.image.load('tytul.png').convert_alpha()
+restart_screen = Player("serce_puste.png")
+restart_screen.rect = (0, 0)
+
+# restart_screen = pygame.image.load("restart_text.png").convert_alpha()
+
+# restart_screen.set_alpha(255)
 
 
 #mis = pygame.image.load('mis111.png').convert_alpha()
@@ -332,7 +341,7 @@ wynik.rect.y = 200
 all_sprite_list = pygame.sprite.Group()
 serca_list = pygame.sprite.Group()
 #reka3 = pygame.image.load("reka3.png").convert_alpha()
-obiekt = GameObject("reka3.png", body=mis)
+obiekt = GameObject("reka_2.png", body=mis)
 przeszkoda = Obsticle(filename="skrzynka_rotate.png", rect=(SCREEN_WIDTH - 100, SCREEN_HEIGHT - 500))
 serce3 =Player("serce1.png",)
 serce2 =Player("serce1.png") #, rect=(SCREEN_WIDTH - 450, SCREEN_HEIGHT - 1400)
@@ -343,9 +352,10 @@ serce3.rect.x = SCREEN_WIDTH - 250
 serce3.rect.y = SCREEN_HEIGHT - 1400
 serce2.rect = (SCREEN_WIDTH - 450, SCREEN_HEIGHT - 1400)
 serce1.rect = (SCREEN_WIDTH - 650, SCREEN_HEIGHT - 1400)
+pocisk = Bullet("kula.png", kx=0, ky=0, pos=BULLETSTART, v=0)
 # menu
-restart_screen = Menu("restart_tło.png", GREEN)
-restart_screen.image.set_alpha(0)
+# restart_screen = Menu("restart_tło.png", GREEN)
+#restart_screen.image.set_alpha(0)
 game_over_text = Menu("game_over.png", GREEN)
 game_over_text.image.set_alpha(0)
 game_over_text.rect.center = (1280, 400)
@@ -364,18 +374,21 @@ all_sprite_list.add(mis)
 all_sprite_list.add(obiekt)
 all_sprite_list.add(przeszkoda)
 all_sprite_list.add(wynik)
+all_sprite_list.add(pocisk)
+
 #serca_list.add(serce1)
 #dserca_list.add(serce2)
 serca_list.add(serce3)
 serca_list.add(serce2)
 serca_list.add(serce1)
+serca_list.add(restart_screen)
 # all_sprite_list.add(restart_screen)
 # all_sprite_list.add(quit_text)
 # all_sprite_list.add(restart_text)
 # all_sprite_list.add(game_over_text)
 
 #srodek obrazka
-w, h = obiekt.image.get_size()
+
 
 
 def draw_text(text, font, text_col, x, y):
@@ -426,6 +439,8 @@ def mainMenu():
 
 #def spadanie():
 
+
+
 def Game(game_ziemia_scroll, game_tlo_scroll):
     running = True
     jumping = False
@@ -444,6 +459,8 @@ def Game(game_ziemia_scroll, game_tlo_scroll):
     while running:
 
         keys = pygame.key.get_pressed()
+        mouse = pygame.mouse.get_pressed()
+        print("mouse: ", mouse)
 
 
 
@@ -498,8 +515,8 @@ def Game(game_ziemia_scroll, game_tlo_scroll):
             obiekt.przesun((+6, +2))
         if keys[pygame.K_SPACE] and czy_w_powietrzu is False and falling is False:
             jumping = True
-
-
+        if mouse[0]:
+            obiekt.shoot(pocisk)
 
         #skakanie
 
@@ -530,19 +547,22 @@ def Game(game_ziemia_scroll, game_tlo_scroll):
 
         # screen.fill(WHITE)
         pos = pygame.mouse.get_pos()
-        mouse = pygame.mouse.get_pressed()
-        obiekt.rect = (500, 500)
-
-        #obiekt.blitRotate((90, 162), pos)
+        # mouse = pygame.mouse.get_pressed()
+        w, h = obiekt.image.get_size()
+        obiekt.rect.x = 1000
+        obiekt.rect.y = 500
         obiekt.update(pos)
         all_sprite_list.draw(screen)
         serca_list.draw(screen)
         pygame.display.flip()
+        angle = math.atan2(obiekt.rect.x - pos[0], obiekt.rect.y - pos[1]) / math.pi * 180
+        reka_pos = (obiekt.rect.x, obiekt.rect.y)
+
 
 
         # sprawdza czy gracz dotyka przeszkody
 
-        if mis.rect.colliderect(przeszkoda):
+        if obiekt.rect.colliderect(przeszkoda):
             czy_kolizja = True
             czas_kolizji = datetime.datetime.now()
             obiekt.kolizja_start("reka_czerwony.png")
@@ -555,14 +575,14 @@ def Game(game_ziemia_scroll, game_tlo_scroll):
 
             # restart i wychodzenie z gry
 
-            if mouse == (1, 0, 0) and 1030 < pos[0] < 1530 and 832 < pos[1] < 968:
-                restart_screen.image.set_alpha(0)
-                game_over_text.image.set_alpha(0)
-                restart_text.image.set_alpha(0)
-                quit_text.image.set_alpha(0)
-
-            if mouse == (1, 0, 0) and 955 < pos[0] < 1605 and 1132 < pos[1] < 1268:
-                run = False
+            # if mouse == (1, 0, 0) and 1030 < pos[0] < 1530 and 832 < pos[1] < 968:
+            #     restart_screen.image.set_alpha(0)
+            #     game_over_text.image.set_alpha(0)
+            #     restart_text.image.set_alpha(0)
+            #     quit_text.image.set_alpha(0)
+            #
+            # if mouse == (1, 0, 0) and 955 < pos[0] < 1605 and 1132 < pos[1] < 1268:
+            #     run = False
 
 
         if czy_kolizja:
@@ -588,7 +608,7 @@ def Game(game_ziemia_scroll, game_tlo_scroll):
 
 
         if czy_damage:
-            if zycia == 3:
+            if zycia == 1:
                 serce1.kolizja_start("serce_puste.png")
                 czy_damage = False
                 mis.rect.x = 700
@@ -602,17 +622,18 @@ def Game(game_ziemia_scroll, game_tlo_scroll):
                 obiekt.kolizja_stop()
                 czy_kolizja = False
                 running = False
+
             elif zycia == 2:
                     serce2.kolizja_start("serce_puste.png")
                     czy_damage = False
-            elif zycia == 4:
+            elif zycia == 3:
                     serce3.kolizja_start("serce_puste.png")
                     czy_damage = False
 
 
 
         przeszkoda.update(pos)
-
+        #obiekt.blitRotate(screen, (w / 2, h / 2), angle)
         #screen.blit(obiekt.rotated_image, obiekt.rotated_image_rect)
 
         #drawing score
@@ -631,6 +652,8 @@ def Game(game_ziemia_scroll, game_tlo_scroll):
         animation_timer += 1
         clock.tick(fps)
         pygame.display.update()
+
+
 
 
 
